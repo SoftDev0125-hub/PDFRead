@@ -84,7 +84,14 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     sheet_write: dict[str, Any] | None = None
     if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") and os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID"):
         try:
-            sheet_write = append_authorization_row(extracted_flat)
+            sheet_write = append_authorization_row(
+                extracted_flat,
+                meta={
+                    "fileId": file_id,
+                    "originalName": rec.get("originalName"),
+                    "receivedAt": datetime.now(timezone.utc).date().isoformat(),
+                },
+            )
         except Exception as e:
             extracted_v2.warnings.append(f"Google Sheets write failed: {type(e).__name__}")
             sheet_write = {"ok": False, "error": f"{type(e).__name__}"}
