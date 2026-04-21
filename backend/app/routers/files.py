@@ -95,3 +95,32 @@ def download_result(file_id: str, request: Request) -> FileResponse:
         raise HTTPException(status_code=404, detail="Result not found")
     return FileResponse(path, filename=f"{file_id}.json", media_type="application/json")
 
+
+@router.delete("/files/{file_id}")
+def delete_file(file_id: str, request: Request) -> dict[str, Any]:
+    uploads_dir = _uploads_dir(request)
+    results_dir = _results_dir(request)
+    meta = _load_meta(uploads_dir)
+
+    rec = next((f for f in meta["files"] if f["id"] == file_id), None)
+    if not rec:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Remove from meta first (so repeated deletes are predictable even if disk is missing).
+    meta["files"] = [f for f in meta["files"] if f["id"] != file_id]
+    _save_meta(uploads_dir, meta)
+
+    deleted_upload = False
+    upload_path = uploads_dir / rec["storedName"]
+    if upload_path.exists():
+        upload_path.unlink()
+        deleted_upload = True
+
+    deleted_result = False
+    result_path = results_dir / f"{file_id}.json"
+    if result_path.exists():
+        result_path.unlink()
+        deleted_result = True
+
+    return {"ok": True, "deleted": {"upload": deleted_upload, "result": deleted_result}}
+

@@ -92,6 +92,10 @@ export async function extract(fileId: string): Promise<ExtractionResult> {
   return api<ExtractionResult>(`/api/extract/${fileId}`, { method: 'POST' })
 }
 
+export async function deleteUploadedFile(fileId: string): Promise<{ ok: true; deleted: { upload: boolean; result: boolean } }> {
+  return api(`/api/files/${fileId}`, { method: 'DELETE' })
+}
+
 export function downloadFileUrl(fileId: string): string {
   return `/api/files/${fileId}/download`
 }

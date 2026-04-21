@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  deleteUploadedFile,
   downloadFileUrl,
   downloadResultUrl,
   extract,
@@ -74,6 +75,15 @@ export function DashboardPage() {
     mutationFn: extract,
     onSuccess: (res) => {
       setLastResult(res)
+    },
+  })
+
+  const deleteM = useMutation({
+    mutationFn: deleteUploadedFile,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['files'] })
+      setSelected(null)
+      setLastResult(null)
     },
   })
 
@@ -185,12 +195,33 @@ export function DashboardPage() {
                       >
                         JSON
                       </a>
+                      <button
+                        className="btn-danger px-2 py-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const ok = window.confirm(
+                            `Delete "${f.originalName}"? This removes the uploaded PDF and its saved JSON result.`
+                          )
+                          if (!ok) return
+                          deleteM.mutate(f.id)
+                        }}
+                        disabled={deleteM.isPending}
+                        title="Delete uploaded file"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </button>
                 )
               })}
             </div>
           </div>
+
+          {deleteM.isError && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+              {(deleteM.error as Error).message}
+            </div>
+          )}
 
           {uploadM.isError && (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
