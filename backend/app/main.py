@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import extraction, files
 
 
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 APP_NAME = "Authorization Document Reader API"
 DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).resolve().parents[1] / "data"))
@@ -40,6 +40,10 @@ app.include_router(extraction.router, prefix="/api")
 
 
 @app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "openaiConfigured": bool(os.getenv("OPENAI_API_KEY")),
+        "sheetsConfigured": bool(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") and os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")),
+    }
 
