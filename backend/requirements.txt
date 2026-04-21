@@ -11,3 +11,8 @@ pymupdf>=1.24.0
 pillow>=10.4.0
 pytesseract>=0.3.10
 
+# LLM + Sheets
+openai>=1.40.0
+gspread>=6.1.4
+google-auth>=2.33.0
+

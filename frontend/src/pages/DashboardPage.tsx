@@ -121,7 +121,7 @@ export function DashboardPage() {
       </header>
 
       <main className="mx-auto grid max-w-6xl grid-cols-12 gap-6 px-6 py-8">
-        <section className="card-elevated col-span-12 lg:col-span-5 p-5">
+        <section className="card-elevated col-span-12 p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">Core files</div>
@@ -230,7 +230,7 @@ export function DashboardPage() {
           )}
         </section>
 
-        <section className="card-elevated col-span-12 lg:col-span-7 p-5">
+        <section className="card-elevated col-span-12 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">Extracted data</div>
@@ -268,135 +268,152 @@ export function DashboardPage() {
 
           {lastResult && (
             <div className="mt-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div>
-                  <FieldRow label="Student name" value={lastResult.extracted.student_name} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="student_name" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Student ID" value={lastResult.extracted.student_id} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="student_id" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="District" value={lastResult.extracted.district} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="district" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Service type" value={lastResult.extracted.service_type} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="service_type" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Authorized minutes" value={lastResult.extracted.authorized_minutes} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="authorized_minutes" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Start date" value={lastResult.extracted.start_date} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="start_date" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="End date" value={lastResult.extracted.end_date} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="end_date" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Authorization #" value={lastResult.extracted.authorization_number} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="authorization_number" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Case manager" value={lastResult.extracted.case_manager_name} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="case_manager_name" />
-                  )}
-                </div>
-                <div>
-                  <FieldRow label="Subject areas" value={lastResult.extracted.subject_areas?.join(', ') ?? null} />
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="subject_areas" />
-                  )}
-                </div>
-                <div className="border-t border-slate-200 pt-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Notes
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Extracted fields
                   </div>
-                  <div className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
-                    {lastResult.extracted.notes ?? '—'}
+                  <div>
+                    <FieldRow label="Student name" value={lastResult.extracted.student_name} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="student_name" />
+                    )}
                   </div>
-                  {showEvidence && lastResult.extractedV2 && (
-                    <EvidenceBlock v2={lastResult.extractedV2} field="notes" />
+                  <div>
+                    <FieldRow label="Student ID" value={lastResult.extracted.student_id} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="student_id" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="District" value={lastResult.extracted.district} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="district" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Service type" value={lastResult.extracted.service_type} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="service_type" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Authorized minutes" value={lastResult.extracted.authorized_minutes} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="authorized_minutes" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Start date" value={lastResult.extracted.start_date} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="start_date" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="End date" value={lastResult.extracted.end_date} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="end_date" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Authorization #" value={lastResult.extracted.authorization_number} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="authorization_number" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Case manager" value={lastResult.extracted.case_manager_name} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="case_manager_name" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Subject areas" value={lastResult.extracted.subject_areas?.join(', ') ?? null} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="subject_areas" />
+                    )}
+                  </div>
+                  <div className="border-t border-slate-200 pt-3">
+                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</div>
+                    <div className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
+                      {lastResult.extracted.notes ?? '—'}
+                    </div>
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="notes" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Page analysis
+                  </div>
+
+                  {lastResult.pageRouting?.length ? (
+                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200">
+                      <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                        <div className="col-span-3">Page</div>
+                        <div className="col-span-5">Route</div>
+                        <div className="col-span-4 text-right">Chars</div>
+                      </div>
+                      <div className="divide-y divide-slate-200">
+                        {lastResult.pageRouting.map((p) => (
+                          <div key={p.page} className="grid grid-cols-12 items-center px-3 py-2 text-sm">
+                            <div className="col-span-3 text-slate-700">{p.page + 1}</div>
+                            <div className="col-span-5">
+                              <span
+                                className={[
+                                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                  p.route === 'ocr'
+                                    ? 'bg-amber-100 text-amber-900'
+                                    : 'bg-emerald-100 text-emerald-900',
+                                ].join(' ')}
+                              >
+                                {p.route.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="col-span-4 text-right text-xs text-slate-600">{p.chars}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                      No page routing data available yet.
+                    </div>
+                  )}
+
+                  {lastResult.extractedV2?.validations?.length ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-sm font-semibold text-slate-900">Validations</div>
+                      <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                        {lastResult.extractedV2.validations.map((v) => (
+                          <li key={v}>{v}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                      No validation issues detected.
+                    </div>
+                  )}
+
+                  {lastResult.extracted.warnings.length > 0 && (
+                    <details className="mt-4 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+                      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-amber-900">
+                        Warnings ({lastResult.extracted.warnings.length})
+                      </summary>
+                      <div className="px-4 pb-4">
+                        <ul className="mt-1 list-disc pl-5 text-sm text-amber-900">
+                          {lastResult.extracted.warnings.map((w) => (
+                            <li key={w}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </details>
                   )}
                 </div>
               </div>
-
-              {lastResult.extractedV2?.validations?.length ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-sm font-semibold text-slate-900">Validations</div>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                    {lastResult.extractedV2.validations.map((v) => (
-                      <li key={v}>{v}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {lastResult.pageRouting?.length ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-sm font-semibold text-slate-900">Page routing</div>
-                  <div className="mt-1 text-xs text-slate-500">How each page was read (text vs OCR)</div>
-                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
-                    <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                      <div className="col-span-3">Page</div>
-                      <div className="col-span-5">Route</div>
-                      <div className="col-span-4 text-right">Chars</div>
-                    </div>
-                    <div className="divide-y divide-slate-200">
-                      {lastResult.pageRouting.map((p) => (
-                        <div key={p.page} className="grid grid-cols-12 items-center px-3 py-2 text-sm">
-                          <div className="col-span-3 text-slate-700">{p.page + 1}</div>
-                          <div className="col-span-5">
-                            <span
-                              className={[
-                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                p.route === 'ocr'
-                                  ? 'bg-amber-100 text-amber-900'
-                                  : 'bg-emerald-100 text-emerald-900',
-                              ].join(' ')}
-                            >
-                              {p.route.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="col-span-4 text-right text-xs text-slate-600">{p.chars}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {lastResult.extracted.warnings.length > 0 && (
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <div className="text-sm font-semibold text-amber-900">Warnings</div>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-amber-900">
-                    {lastResult.extracted.warnings.map((w) => (
-                      <li key={w}>{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
 
