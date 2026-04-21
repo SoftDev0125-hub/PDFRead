@@ -40,3 +40,15 @@ body {
 .input {
   @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-slate-300 focus:ring-4 focus:ring-slate-200;
 }
+
+.app-shell {
+  @apply min-h-screen;
+  background:
+    radial-gradient(900px 500px at 20% 5%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 85% 0%, rgba(168, 85, 247, 0.10), transparent 55%),
+    linear-gradient(to bottom, rgb(248 250 252), rgb(248 250 252));
+}
+
+.card-elevated {
+  @apply card shadow-[0_1px_0_rgba(15,23,42,0.04),0_12px_30px_rgba(15,23,42,0.08)];
+}

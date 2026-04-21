@@ -1,34 +1,17 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
 
-from app.services.pdf_text import extract_pdf_text
+from app.services.page_pipeline import extract_pages_best_effort
+from app.services.schema_extract import ExtractedAuthorizationV2, extract_schema_from_pages
 
 
 router = APIRouter(tags=["extraction"])
-
-
-class ExtractedAuthorization(BaseModel):
-    student_name: str | None = None
-    student_id: str | None = None
-    district: str | None = None
-    service_type: str | None = None
-    authorized_minutes: int | None = None
-    start_date: str | None = None
-    end_date: str | None = None
-    authorization_number: str | None = None
-    case_manager_name: str | None = None
-    subject_areas: list[str] | None = None
-    notes: str | None = None
-
-    warnings: list[str] = []
 
 
 def _uploads_dir(request: Request) -> Path:
@@ -46,95 +29,25 @@ def _load_meta(uploads_dir: Path) -> dict[str, Any]:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def _normalize_name(s: str) -> str:
-    s = re.sub(r"\s+", " ", s.strip())
-    return s.title() if s.isupper() else s
-
-
-def _hours_to_minutes(hours: float) -> int:
-    return int(round(hours * 60))
-
-
-def _heuristic_extract(text: str) -> ExtractedAuthorization:
-    warnings: list[str] = []
-    cleaned = re.sub(r"[ \t]+", " ", text)
-
-    def pick(pattern: str, flags: int = re.IGNORECASE) -> str | None:
-        m = re.search(pattern, cleaned, flags)
-        return m.group(1).strip() if m else None
-
-    # Common patterns seen in the sample PDF you shared
-    student_name = pick(r"\bCLIENT INFORMATION\b.*?\bNAME:\s*([A-Z][A-Z ,.'-]+)", flags=re.IGNORECASE | re.DOTALL)
-    if student_name:
-        student_name = _normalize_name(student_name)
-
-    student_id = pick(r"\bCLIENT I\.D\.\s*:\s*([0-9A-Za-z-]+)")
-    authorization_number = pick(r"\bAUTHORIZATION\s*(?:No\.|NO\.|#)\s*:\s*([0-9A-Za-z-]+)")
-    case_manager_name = pick(r"\bCASEWORKER\s*:\s*([A-Z][A-Z ,.'-]+)")
-    if case_manager_name:
-        case_manager_name = _normalize_name(case_manager_name)
-
-    # Service type: use the first all-caps service line under SERVICE DETAILS if present
-    service_type = pick(r"\bSERVICE DETAILS\b.*?\n([A-Z][A-Z \-/]+)\n", flags=re.IGNORECASE | re.DOTALL)
-    if service_type:
-        service_type = re.sub(r"\s+", " ", service_type).strip().upper()
-
-    # Date range: "09/01/26 to 12/31/26" (accepts separators)
-    date_range = pick(r"(\d{1,2}/\d{1,2}/\d{2,4})\s*(?:to|-|–)\s*(\d{1,2}/\d{1,2}/\d{2,4})", flags=re.IGNORECASE)
-    start_date = end_date = None
-    if date_range:
-        # pick() returns group(1) only; do full match for two groups
-        m = re.search(r"(\d{1,2}/\d{1,2}/\d{2,4})\s*(?:to|-|–)\s*(\d{1,2}/\d{1,2}/\d{2,4})", cleaned)
-        if m:
-            start_date, end_date = m.group(1), m.group(2)
-
-    # Authorized hours: "30.00 HRS-DIR" or "30 HRS/MO"
-    authorized_minutes: int | None = None
-    hrs = pick(r"\b(\d+(?:\.\d+)?)\s*HRS\b")
-    if hrs:
-        try:
-            authorized_minutes = _hours_to_minutes(float(hrs))
-            warnings.append("authorized_minutes derived from hours; confirm meaning (per month vs total).")
-        except ValueError:
-            warnings.append("Could not parse hours value.")
-
-    notes = pick(r"\bCOMMENTS:\s*(.+?)(?:\bGROSS AUTH\b|\bTOTAL\b|TERMS AND CONDITIONS)", flags=re.IGNORECASE | re.DOTALL)
-    if notes:
-        notes = notes.strip().replace("\n", " ")
-
-    out = ExtractedAuthorization(
-        student_name=student_name,
-        student_id=student_id,
-        district=None,
-        service_type=service_type,
-        authorized_minutes=authorized_minutes,
-        start_date=start_date,
-        end_date=end_date,
-        authorization_number=authorization_number,
-        case_manager_name=case_manager_name,
-        subject_areas=None,
-        notes=notes,
-        warnings=warnings,
-    )
-
-    for field in (
-        "student_name",
-        "student_id",
-        "service_type",
-        "start_date",
-        "end_date",
-        "authorization_number",
-        "case_manager_name",
-    ):
-        if getattr(out, field) in (None, "", []):
-            out.warnings.append(f"Missing field: {field}")
-
-    if out.district is None:
-        out.warnings.append("Missing field: district (often not explicit in PDFs).")
-    if out.subject_areas is None:
-        out.warnings.append("Missing field: subject_areas (may not exist in some PDFs).")
-
-    return out
+def _flatten_v2(v2: ExtractedAuthorizationV2) -> dict[str, Any]:
+    """
+    Backwards-compatible `extracted` object (flat values) for the frontend,
+    while still returning v2 evidence under `extractedV2`.
+    """
+    return {
+        "student_name": v2.student_name.value,
+        "student_id": v2.student_id.value,
+        "district": v2.district.value,
+        "service_type": v2.service_type.value,
+        "authorized_minutes": v2.authorized_minutes.value,
+        "start_date": v2.start_date.value,
+        "end_date": v2.end_date.value,
+        "authorization_number": v2.authorization_number.value,
+        "case_manager_name": v2.case_manager_name.value,
+        "subject_areas": v2.subject_areas.value,
+        "notes": v2.notes.value,
+        "warnings": v2.warnings,
+    }
 
 
 @router.post("/extract/{file_id}")
@@ -150,13 +63,17 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="File missing on disk")
 
-    text = extract_pdf_text(pdf_path)
-    extracted = _heuristic_extract(text)
+    page_texts = extract_pages_best_effort(str(pdf_path))
+    pages_for_schema = [(p.page_index, p.text) for p in page_texts]
+    extracted_v2 = extract_schema_from_pages(pages_for_schema)
+    extracted_flat = _flatten_v2(extracted_v2)
 
     payload = {
         "fileId": file_id,
         "originalName": rec["originalName"],
-        "extracted": extracted.model_dump(),
+        "extracted": extracted_flat,
+        "extractedV2": extracted_v2.model_dump(),
+        "pageRouting": [{"page": p.page_index, "route": p.route, "chars": len(p.text)} for p in page_texts],
         "extractedAt": datetime.now(timezone.utc).isoformat(),
     }
 

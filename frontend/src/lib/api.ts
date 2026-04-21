@@ -26,11 +26,47 @@ export type ExtractedAuthorization = {
   warnings: string[]
 }
 
+export type Evidence = {
+  page: number | null
+  snippet: string | null
+}
+
+export type FieldValue<T> = {
+  value: T | null
+  evidence: Evidence
+  confidence: number | null
+}
+
+export type ExtractedAuthorizationV2 = {
+  student_name: FieldValue<string>
+  student_id: FieldValue<string>
+  district: FieldValue<string>
+  service_type: FieldValue<string>
+  authorized_minutes: FieldValue<number>
+  start_date: FieldValue<string>
+  end_date: FieldValue<string>
+  authorization_number: FieldValue<string>
+  case_manager_name: FieldValue<string>
+  subject_areas: FieldValue<string[]>
+  notes: FieldValue<string>
+
+  warnings: string[]
+  validations: string[]
+}
+
+export type PageRouting = {
+  page: number
+  route: 'text' | 'ocr'
+  chars: number
+}
+
 export type ExtractionResult = {
   fileId: string
   originalName: string
   extractedAt: string
   extracted: ExtractedAuthorization
+  extractedV2?: ExtractedAuthorizationV2
+  pageRouting?: PageRouting[]
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {

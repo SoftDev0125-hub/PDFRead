@@ -7,6 +7,7 @@ import {
   listFiles,
   uploadPdf,
   type ExtractionResult,
+  type ExtractedAuthorizationV2,
   type UploadedFile,
 } from '../lib/api'
 
@@ -25,10 +26,29 @@ function formatBytes(bytes: number): string {
 function FieldRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="grid grid-cols-12 gap-3 py-2">
-      <div className="col-span-5 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div className="col-span-5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </div>
       <div className="col-span-7 text-sm text-slate-900">{value ?? '—'}</div>
+    </div>
+  )
+}
+
+function EvidenceBlock({ v2, field }: { v2: ExtractedAuthorizationV2; field: keyof ExtractedAuthorizationV2 }) {
+  const item = v2[field] as unknown as { evidence?: { page: number | null; snippet: string | null } }
+  const ev = item?.evidence
+  if (!ev?.snippet) return null
+  return (
+    <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-semibold text-slate-700">
+        Evidence{typeof ev.page === 'number' ? ` (page ${ev.page + 1})` : ''}
+      </div>
+        <div className="text-[11px] text-slate-500">matched snippet</div>
+      </div>
+      <div className="mt-2 whitespace-pre-wrap rounded-lg bg-white/60 p-2 leading-relaxed text-slate-800">
+        {ev.snippet}
+      </div>
     </div>
   )
 }
@@ -37,6 +57,7 @@ export function DashboardPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<UploadedFile | null>(null)
   const [lastResult, setLastResult] = useState<ExtractionResult | null>(null)
+  const [showEvidence, setShowEvidence] = useState(true)
 
   const filesQ = useQuery({ queryKey: ['files'], queryFn: listFiles })
 
@@ -63,27 +84,40 @@ export function DashboardPage() {
   }, [files, selected])
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <div className="text-sm font-semibold text-slate-900">Authorization Document Reader</div>
-            <div className="text-xs text-slate-500">
-              Upload PDFs → extract → download results (JSON)
+    <div className="app-shell">
+      <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+          <div className="min-w-0">
+            <div className="truncate text-base font-semibold tracking-tight text-slate-900">
+              Authorization Document Reader
+            </div>
+            <div className="mt-0.5 text-xs text-slate-600">
+              Upload PDFs, extract structured fields, and export result files.
             </div>
           </div>
-          <div className="text-xs text-slate-500">Backend: <code className="rounded bg-slate-100 px-1.5 py-0.5">/api</code></div>
+          <div className="flex items-center gap-2">
+            <button
+              className="btn-secondary text-xs"
+              onClick={() => setShowEvidence((v) => !v)}
+              title="Toggle evidence snippets"
+            >
+              {showEvidence ? 'Hide evidence' : 'Show evidence'}
+            </button>
+            <div className="hidden text-xs text-slate-500 sm:block">
+              API <code className="rounded bg-slate-100 px-1.5 py-0.5">/api</code>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl grid-cols-12 gap-6 px-6 py-6">
-        <section className="card col-span-12 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <main className="mx-auto grid max-w-6xl grid-cols-12 gap-6 px-6 py-8">
+        <section className="card-elevated col-span-12 lg:col-span-5 p-5">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">Core files</div>
-              <div className="text-xs text-slate-500">Uploaded authorization PDFs</div>
+              <div className="mt-1 text-xs text-slate-600">Your uploaded authorization PDFs</div>
             </div>
-            <label className="btn-secondary cursor-pointer">
+            <label className="btn-primary cursor-pointer">
               <input
                 className="hidden"
                 type="file"
@@ -94,21 +128,21 @@ export function DashboardPage() {
                   e.currentTarget.value = ''
                 }}
               />
-              Upload PDF
+              Upload
             </label>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-            <div className="grid grid-cols-12 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
-              <div className="col-span-5">File</div>
-              <div className="col-span-3">Uploaded</div>
-              <div className="col-span-2">Size</div>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <div className="col-span-6">File</div>
+              <div className="col-span-4">Uploaded</div>
               <div className="col-span-2 text-right">Actions</div>
             </div>
             <div className="divide-y divide-slate-200">
               {files.length === 0 && (
-                <div className="px-3 py-6 text-center text-sm text-slate-500">
-                  No files yet. Upload a PDF to start.
+                <div className="px-4 py-10 text-center">
+                  <div className="text-sm font-medium text-slate-900">No files yet</div>
+                  <div className="mt-1 text-sm text-slate-600">Upload a PDF to start extraction.</div>
                 </div>
               )}
               {files.map((f) => {
@@ -117,17 +151,25 @@ export function DashboardPage() {
                   <button
                     key={f.id}
                     className={[
-                      'grid w-full grid-cols-12 items-center px-3 py-3 text-left text-sm',
-                      active ? 'bg-slate-100' : 'bg-white hover:bg-slate-50',
+                      'grid w-full grid-cols-12 items-center px-3 py-3 text-left',
+                      active
+                        ? 'bg-slate-100/70'
+                        : 'bg-white hover:bg-slate-50/70',
                     ].join(' ')}
                     onClick={() => {
                       setSelected(f)
                       setLastResult(null)
                     }}
                   >
-                    <div className="col-span-5 truncate font-medium text-slate-900">{f.originalName}</div>
-                    <div className="col-span-3 truncate text-xs text-slate-600">{new Date(f.uploadedAt).toLocaleString()}</div>
-                    <div className="col-span-2 text-xs text-slate-600">{formatBytes(f.sizeBytes)}</div>
+                    <div className="col-span-6 min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-900">
+                        {f.originalName}
+                      </div>
+                      <div className="mt-0.5 text-xs text-slate-600">{formatBytes(f.sizeBytes)}</div>
+                    </div>
+                    <div className="col-span-4 truncate text-xs text-slate-600">
+                      {new Date(f.uploadedAt).toLocaleString()}
+                    </div>
                     <div className="col-span-2 flex justify-end gap-2">
                       <a
                         className="btn-secondary text-xs"
@@ -149,15 +191,19 @@ export function DashboardPage() {
               })}
             </div>
           </div>
+
+          {uploadM.isError && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+              {(uploadM.error as Error).message}
+            </div>
+          )}
         </section>
 
-        <section className="card col-span-12 lg:col-span-6 p-5">
-          <div className="flex items-start justify-between gap-3">
+        <section className="card-elevated col-span-12 lg:col-span-7 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">Extracted data</div>
-              <div className="text-xs text-slate-500">
-                Structured fields (missing fields show as warnings)
-              </div>
+              <div className="mt-1 text-xs text-slate-600">Schema + evidence + validations</div>
             </div>
             <button
               className="btn-primary"
@@ -172,31 +218,86 @@ export function DashboardPage() {
           </div>
 
           {!selectedFromList && (
-            <div className="mt-6 text-sm text-slate-500">Select a file to extract.</div>
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="text-sm font-semibold text-slate-900">Select a file</div>
+              <div className="mt-1 text-sm text-slate-600">
+                Choose a PDF from the left to run extraction and inspect evidence.
+              </div>
+            </div>
           )}
 
           {selectedFromList && !lastResult && (
-            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              Ready to extract fields from <span className="font-medium text-slate-900">{selectedFromList.originalName}</span>.
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="text-sm font-semibold text-slate-900">Ready</div>
+              <div className="mt-1 text-sm text-slate-600">
+                Run extraction for <span className="font-medium text-slate-900">{selectedFromList.originalName}</span>.
+              </div>
             </div>
           )}
 
           {lastResult && (
             <div className="mt-4">
-              <div className="rounded-xl border border-slate-200 p-4">
-                <FieldRow label="Student name" value={lastResult.extracted.student_name} />
-                <FieldRow label="Student ID" value={lastResult.extracted.student_id} />
-                <FieldRow label="District" value={lastResult.extracted.district} />
-                <FieldRow label="Service type" value={lastResult.extracted.service_type} />
-                <FieldRow label="Authorized minutes" value={lastResult.extracted.authorized_minutes} />
-                <FieldRow label="Start date" value={lastResult.extracted.start_date} />
-                <FieldRow label="End date" value={lastResult.extracted.end_date} />
-                <FieldRow label="Authorization #" value={lastResult.extracted.authorization_number} />
-                <FieldRow label="Case manager" value={lastResult.extracted.case_manager_name} />
-                <FieldRow
-                  label="Subject areas"
-                  value={lastResult.extracted.subject_areas?.join(', ') ?? null}
-                />
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div>
+                  <FieldRow label="Student name" value={lastResult.extracted.student_name} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="student_name" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Student ID" value={lastResult.extracted.student_id} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="student_id" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="District" value={lastResult.extracted.district} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="district" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Service type" value={lastResult.extracted.service_type} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="service_type" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Authorized minutes" value={lastResult.extracted.authorized_minutes} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="authorized_minutes" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Start date" value={lastResult.extracted.start_date} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="start_date" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="End date" value={lastResult.extracted.end_date} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="end_date" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Authorization #" value={lastResult.extracted.authorization_number} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="authorization_number" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Case manager" value={lastResult.extracted.case_manager_name} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="case_manager_name" />
+                  )}
+                </div>
+                <div>
+                  <FieldRow label="Subject areas" value={lastResult.extracted.subject_areas?.join(', ') ?? null} />
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="subject_areas" />
+                  )}
+                </div>
                 <div className="border-t border-slate-200 pt-3">
                   <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Notes
@@ -204,11 +305,59 @@ export function DashboardPage() {
                   <div className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
                     {lastResult.extracted.notes ?? '—'}
                   </div>
+                  {showEvidence && lastResult.extractedV2 && (
+                    <EvidenceBlock v2={lastResult.extractedV2} field="notes" />
+                  )}
                 </div>
               </div>
 
+              {lastResult.extractedV2?.validations?.length ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Validations</div>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                    {lastResult.extractedV2.validations.map((v) => (
+                      <li key={v}>{v}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {lastResult.pageRouting?.length ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">Page routing</div>
+                  <div className="mt-1 text-xs text-slate-500">How each page was read (text vs OCR)</div>
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200">
+                    <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                      <div className="col-span-3">Page</div>
+                      <div className="col-span-5">Route</div>
+                      <div className="col-span-4 text-right">Chars</div>
+                    </div>
+                    <div className="divide-y divide-slate-200">
+                      {lastResult.pageRouting.map((p) => (
+                        <div key={p.page} className="grid grid-cols-12 items-center px-3 py-2 text-sm">
+                          <div className="col-span-3 text-slate-700">{p.page + 1}</div>
+                          <div className="col-span-5">
+                            <span
+                              className={[
+                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                p.route === 'ocr'
+                                  ? 'bg-amber-100 text-amber-900'
+                                  : 'bg-emerald-100 text-emerald-900',
+                              ].join(' ')}
+                            >
+                              {p.route.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="col-span-4 text-right text-xs text-slate-600">{p.chars}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {lastResult.extracted.warnings.length > 0 && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <div className="text-sm font-semibold text-amber-900">Warnings</div>
                   <ul className="mt-2 list-disc pl-5 text-sm text-amber-900">
                     {lastResult.extracted.warnings.map((w) => (
@@ -221,51 +370,10 @@ export function DashboardPage() {
           )}
 
           {extractM.isError && (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
               {(extractM.error as Error).message}
             </div>
           )}
-        </section>
-
-        <section className="card col-span-12 lg:col-span-6 p-5">
-          <div className="text-sm font-semibold text-slate-900">Result files</div>
-          <div className="mt-1 text-xs text-slate-500">Saved extraction outputs per PDF</div>
-
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">What gets generated</div>
-            <div className="mt-2 text-sm text-slate-700">
-              Each extraction writes a JSON file on the backend: <code className="rounded bg-slate-100 px-1.5 py-0.5">backend/data/results/&lt;fileId&gt;.json</code>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <a
-                className="btn-secondary"
-                href={selectedFromList ? downloadResultUrl(selectedFromList.id) : undefined}
-                aria-disabled={!selectedFromList}
-                onClick={(e) => {
-                  if (!selectedFromList) e.preventDefault()
-                }}
-              >
-                Download current JSON
-              </a>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  filesQ.refetch().catch(() => undefined)
-                }}
-              >
-                Refresh file list
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="font-medium text-slate-900">Scalability-minded separation</div>
-            <ul className="mt-2 list-disc pl-5">
-              <li>Backend: extraction pipeline + storage + future Google Sheets writer</li>
-              <li>Frontend: purely a client for APIs, easy to swap UI framework later</li>
-              <li>API contract lives in <code className="rounded bg-white px-1.5 py-0.5">frontend/src/lib/api.ts</code></li>
-            </ul>
-          </div>
         </section>
       </main>
     </div>
