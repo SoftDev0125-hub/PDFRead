@@ -316,7 +316,7 @@ export function DashboardPage() {
                     )}
                   </div>
                   <div>
-                    <FieldRow label="Authorization #" value={lastResult.extracted.authorization_number} />
+                    <FieldRow label="Authorization number" value={lastResult.extracted.authorization_number} />
                     {showEvidence && lastResult.extractedV2 && (
                       <EvidenceBlock v2={lastResult.extractedV2} field="authorization_number" />
                     )}
