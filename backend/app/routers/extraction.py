@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.services.openai_extract import extract_with_openai
+from app.services.openai_extract import extract_with_openai_two_pass
 from app.services.page_pipeline import extract_pages_best_effort
 from app.services.schema_extract import ExtractedAuthorizationV2, extract_schema_from_pages
 from app.services.sheets_writer import append_authorization_row
@@ -71,7 +71,7 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     used_llm = False
     if os.getenv("OPENAI_API_KEY"):
         try:
-            extracted_v2 = extract_with_openai(pages_for_schema)
+            extracted_v2 = extract_with_openai_two_pass(pages_for_schema)
             used_llm = True
         except Exception as e:
             # Fall back to heuristic extraction, but surface the reason.
