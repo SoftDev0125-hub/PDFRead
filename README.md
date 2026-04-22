@@ -1,6 +1,16 @@
 # Authorization Document Reader
 
+**Repository:** [github.com/SoftDev0125-hub/Authorization-Document-Reader](https://github.com/SoftDev0125-hub/Authorization-Document-Reader)
+
 Monorepo with a **frontend** (React) and **backend** (FastAPI) for ingesting authorization PDFs, extracting structured fields, and exporting result files.
+
+**Reviewer materials:** one-page write-up + Loom outline → [docs/SUBMISSION_FOR_REVIEWERS.md](docs/SUBMISSION_FOR_REVIEWERS.md). For a private repo, add the reviewer under GitHub **Settings → Collaborators** (Read is enough to review code).
+
+## Prerequisites
+
+- **Python** 3.11+ recommended (3.10+ should work)
+- **Node.js** 18+ and npm
+- Optional: **Tesseract** for OCR; **OpenAI API key** for LLM extraction; **Google Cloud** service account + target sheet for Sheets sync
 
 ## Structure
 
@@ -8,6 +18,20 @@ Monorepo with a **frontend** (React) and **backend** (FastAPI) for ingesting aut
 - `backend/`: API + extraction pipeline (PDF text → extraction → JSON result)
 
 ## Run locally
+
+1. Clone the repo and copy the environment template into `backend/.env`:
+
+```bash
+# macOS / Linux:
+cp backend/.env.example backend/.env
+
+# Windows (cmd), from repo root:
+copy backend\.env.example backend\.env
+```
+
+Edit `backend/.env` — set `OPENAI_API_KEY` and/or Google variables if you use those features.
+
+2. Start backend and frontend in two terminals (see below).
 
 ### Backend
 
