@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass
 from typing import Literal
@@ -8,7 +7,7 @@ from typing import Literal
 import fitz  # PyMuPDF
 
 
-PageRoute = Literal["text", "ocr"]
+PageRoute = Literal["text", "skipped"]
 
 
 @dataclass(frozen=True)
@@ -30,23 +29,13 @@ def _has_meaningful_text(text: str) -> bool:
     return len(t) >= 40
 
 
-def _ocr_image(pix: fitz.Pixmap) -> str:
-    # OCR is optional: requires installed Tesseract binary.
-    try:
-        import pytesseract
-        from PIL import Image
-    except Exception as e:  # pragma: no cover
-        raise RuntimeError("OCR dependencies missing. Install pytesseract + pillow.") from e
+def extract_pages_best_effort(pdf_path: str) -> list[PageExtraction]:
+    """
+    Extract ONLY visible/extractable PDF text.
 
-    tesseract_cmd = os.getenv("TESSERACT_CMD")
-    if tesseract_cmd:
-        pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
-
-    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-    return pytesseract.image_to_string(img)
-
-
-def extract_pages_best_effort(pdf_path: str, *, dpi: int = 300) -> list[PageExtraction]:
+    Requirement: do not perform analysis on sections where text is not visible.
+    Concretely, we do NOT use OCR. Pages without meaningful extracted text are marked as skipped.
+    """
     doc = fitz.open(pdf_path)
     out: list[PageExtraction] = []
     for i in range(doc.page_count):
@@ -55,12 +44,6 @@ def extract_pages_best_effort(pdf_path: str, *, dpi: int = 300) -> list[PageExtr
         if _has_meaningful_text(text):
             out.append(PageExtraction(page_index=i, route="text", text=text))
             continue
-
-        # OCR route
-        zoom = dpi / 72.0
-        mat = fitz.Matrix(zoom, zoom)
-        pix = page.get_pixmap(matrix=mat, alpha=False)
-        ocr_text = _clean_text(_ocr_image(pix))
-        out.append(PageExtraction(page_index=i, route="ocr", text=ocr_text))
+        out.append(PageExtraction(page_index=i, route="skipped", text=""))
     return out
 

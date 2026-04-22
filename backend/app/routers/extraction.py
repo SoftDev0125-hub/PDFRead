@@ -59,7 +59,7 @@ def _flatten_v2(v2: ExtractedLabReportV2) -> dict[str, Any]:
 
 
 @router.post("/extract/{file_id}")
-def extract(file_id: str, request: Request) -> dict[str, Any]:
+def extract(file_id: str, request: Request, refresh: bool = False) -> dict[str, Any]:
     uploads_dir = _uploads_dir(request)
     results_dir = _results_dir(request)
     meta = _load_meta(uploads_dir)
@@ -67,12 +67,20 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     if not rec:
         raise HTTPException(status_code=404, detail="File not found")
 
+    result_path = results_dir / f"{file_id}.json"
+    if not refresh and result_path.exists():
+        try:
+            return json.loads(result_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
     pdf_path = uploads_dir / rec["storedName"]
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="File missing on disk")
 
+    # Compute final result synchronously (single request), then cache.
     page_texts = extract_pages_best_effort(str(pdf_path))
-    pages_for_schema = [(p.page_index, p.text) for p in page_texts]
+    pages_for_schema = [(p.page_index, p.text) for p in page_texts if p.route == "text"]
     used_llm = False
     extracted_v2: ExtractedLabReportV2
     openai_configured = bool(os.getenv("OPENAI_API_KEY"))
@@ -89,18 +97,24 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     else:
         extracted_v2 = extract_lab_schema_heuristic(pages_for_schema)
         extracted_v2.warnings.append("OPENAI_API_KEY not set; used heuristic extraction.")
-    extracted_flat = _flatten_v2(extracted_v2)
+
+    skipped_pages = [p.page_index for p in page_texts if p.route != "text"]
+    if skipped_pages:
+        extracted_v2.warnings.append(
+            "Skipped pages with no visible/extractable text (OCR disabled): "
+            + ", ".join([str(p + 1) for p in skipped_pages])
+        )
 
     payload = {
         "fileId": file_id,
         "originalName": rec["originalName"],
-        "extracted": extracted_flat,
+        "extracted": _flatten_v2(extracted_v2),
         "extractedV2": extracted_v2.model_dump(),
         "pageRouting": [{"page": p.page_index, "route": p.route, "chars": len(p.text)} for p in page_texts],
         "llmUsed": used_llm,
         "extractedAt": datetime.now(timezone.utc).isoformat(),
     }
 
-    (results_dir / f"{file_id}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    result_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return payload
 

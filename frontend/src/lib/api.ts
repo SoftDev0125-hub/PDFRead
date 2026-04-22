@@ -62,7 +62,7 @@ export type ExtractedAuthorizationV2 = {
 
 export type PageRouting = {
   page: number
-  route: 'text' | 'ocr'
+  route: 'text' | 'skipped'
   chars: number
 }
 

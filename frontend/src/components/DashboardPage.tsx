@@ -47,7 +47,7 @@ function statusPill(status: string | null | undefined): { text: string; classNam
 
 export function DashboardPage() {
   const [selected, setSelected] = useState<UploadedFile | null>(null)
-  const [lastResult, setLastResult] = useState<ExtractionResult | null>(null)
+  const [resultsByFileId, setResultsByFileId] = useState<Record<string, ExtractionResult>>({})
   const [showEvidence, setShowEvidence] = useState(true)
 
   const [files, setFiles] = useState<UploadedFile[]>([])
@@ -62,6 +62,16 @@ export function DashboardPage() {
 
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const selectedFromList = useMemo(() => {
+    if (!selected) return null
+    return files.find((f) => f.id === selected.id) ?? selected
+  }, [files, selected])
+
+  const lastResult = useMemo(() => {
+    if (!selectedFromList) return null
+    return resultsByFileId[selectedFromList.id] ?? null
+  }, [resultsByFileId, selectedFromList])
 
   async function refreshFiles(): Promise<void> {
     setFilesLoading(true)
@@ -87,7 +97,6 @@ export function DashboardPage() {
       const res = await uploadPdf(file)
       await refreshFiles()
       setSelected(res.file)
-      setLastResult(null)
     } catch (e) {
       setUploadError((e as Error).message)
     } finally {
@@ -100,7 +109,7 @@ export function DashboardPage() {
     setExtractError(null)
     try {
       const res = await extract(fileId)
-      setLastResult(res)
+      setResultsByFileId((prev) => ({ ...prev, [fileId]: res }))
     } catch (e) {
       setExtractError((e as Error).message)
     } finally {
@@ -115,17 +124,17 @@ export function DashboardPage() {
       await deleteUploadedFile(fileId)
       await refreshFiles()
       setSelected(null)
-      setLastResult(null)
+      setResultsByFileId((prev) => {
+        const next = { ...prev }
+        delete next[fileId]
+        return next
+      })
     } catch (e) {
       setDeleteError((e as Error).message)
     } finally {
       setDeletePending(false)
     }
   }
-  const selectedFromList = useMemo(() => {
-    if (!selected) return null
-    return files.find((f) => f.id === selected.id) ?? selected
-  }, [files, selected])
 
   return (
     <div className="app-shell">
@@ -198,26 +207,20 @@ export function DashboardPage() {
                     tabIndex={0}
                     className={[
                       'grid w-full cursor-pointer grid-cols-12 items-center px-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 focus-visible:ring-offset-2',
-                      active
-                        ? 'bg-slate-100/70'
-                        : 'bg-white hover:bg-slate-50/70',
+                      active ? 'bg-slate-100/70' : 'bg-white hover:bg-slate-50/70',
                     ].join(' ')}
                     onClick={() => {
                       setSelected(f)
-                      setLastResult(null)
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         setSelected(f)
-                        setLastResult(null)
                       }
                     }}
                   >
                     <div className="col-span-6 min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {f.originalName}
-                      </div>
+                      <div className="truncate text-sm font-semibold text-slate-900">{f.originalName}</div>
                       <div className="mt-0.5 text-xs text-slate-600">{formatBytes(f.sizeBytes)}</div>
                     </div>
                     <div className="col-span-4 truncate text-xs text-slate-600">
@@ -313,9 +316,7 @@ export function DashboardPage() {
             <div className="mt-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Page analysis
-                  </div>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Page analysis</div>
 
                   {lastResult.pageRouting?.length ? (
                     <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200">
@@ -332,7 +333,7 @@ export function DashboardPage() {
                               <span
                                 className={[
                                   'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                  p.route === 'ocr'
+                                  p.route === 'skipped'
                                     ? 'bg-amber-100 text-amber-900'
                                     : 'bg-emerald-100 text-emerald-900',
                                 ].join(' ')}
@@ -348,21 +349,6 @@ export function DashboardPage() {
                   ) : (
                     <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                       No page routing data available yet.
-                    </div>
-                  )}
-
-                  {lastResult.extractedV2?.validations?.length ? (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="text-sm font-semibold text-slate-900">Validations</div>
-                      <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
-                        {lastResult.extractedV2.validations.map((v) => (
-                          <li key={v}>{v}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                      No validation issues detected.
                     </div>
                   )}
 
@@ -412,9 +398,7 @@ export function DashboardPage() {
                     </div>
 
                     <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        Sex
-                      </div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sex</div>
                       <div className="mt-1 truncate text-sm font-semibold text-slate-900">
                         {lastResult.extracted.sex ?? '—'}
                       </div>
@@ -437,9 +421,7 @@ export function DashboardPage() {
                     </div>
 
                     <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        Source
-                      </div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Source</div>
                       <div className="mt-1 truncate text-sm font-semibold text-slate-900">
                         {lastResult.extracted.source ?? '—'}
                       </div>

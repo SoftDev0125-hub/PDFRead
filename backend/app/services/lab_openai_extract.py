@@ -129,8 +129,8 @@ Return ONLY valid JSON matching this schema:
 
 Evidence rules:
 - Evidence.page is 0-based page index when known; otherwise null.
-- Evidence.snippet must be a short exact quote from the provided text (not invented).
-- Keep snippets short (<= 200 chars when possible).
+- Evidence.snippet is optional; ONLY include snippets for patient_name, age_years, sex, report_date, and source.
+- For biomarkers, set evidence.page/snippet to null unless it is trivially available (this keeps responses smaller and faster).
 
 Data rules:
 - age_years should be a number if possible.
@@ -141,8 +141,48 @@ Data rules:
 
 
 def _call_openai_json(system: str, user: str) -> dict[str, Any]:
+    """
+    Uses the Responses API and streams server-side for lower end-to-end latency,
+    but buffers and returns only after the full JSON is complete (UI remains all-at-once).
+    Falls back to chat.completions if streaming isn't available.
+    """
     model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     c = _client()
+
+    # Default on: streaming reduces "idle waiting" on long responses.
+    streaming_enabled = os.getenv("OPENAI_STREAMING", "1").strip().lower() not in ("0", "false", "no", "off")
+
+    if streaming_enabled:
+        try:
+            # Newer OpenAI python SDKs support response streaming via client.responses.create(..., stream=True).
+            text_parts: list[str] = []
+            stream = c.responses.create(
+                model=model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                input=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                stream=True,
+            )
+
+            for event in stream:
+                # Best-effort: handle different SDK event shapes.
+                et = getattr(event, "type", None) or (event.get("type") if isinstance(event, dict) else None)
+                if et in ("response.output_text.delta", "response.output_text.annotation"):
+                    delta = getattr(event, "delta", None) or (event.get("delta") if isinstance(event, dict) else None)
+                    if isinstance(delta, str) and delta:
+                        text_parts.append(delta)
+                elif et == "response.completed":
+                    break
+
+            content = "".join(text_parts).strip() or "{}"
+            return json.loads(content)
+        except Exception:
+            # Fall back below.
+            pass
+
     resp = c.chat.completions.create(
         model=model,
         temperature=0,

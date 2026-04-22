@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import extraction, files
+from app.routers import jobs as jobs_router
 
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
@@ -37,6 +38,7 @@ app.state.results_dir = RESULTS_DIR
 
 app.include_router(files.router, prefix="/api")
 app.include_router(extraction.router, prefix="/api")
+app.include_router(jobs_router.router, prefix="/api")
 
 
 @app.get("/api/health")

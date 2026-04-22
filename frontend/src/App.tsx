@@ -1,13 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { DashboardPage } from './pages/DashboardPage'
-
-function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<DashboardPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
+// Legacy Vite entrypoint (kept to avoid breaking old imports).
+// Next.js entrypoint is `frontend/app/page.tsx`.
+export default function LegacyViteApp() {
+  return null
 }
-
-export default App

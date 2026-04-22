@@ -1,6 +1,6 @@
 # Lab Report Biomarker Extractor
 
-**Repository:** [github.com/SoftDev0125-hub/Authorization-Document-Reader](https://github.com/SoftDev0125-hub/Authorization-Document-Reader)
+**Repository:** [github.com/SoftDev0125-hub/PDFRead](https://github.com/SoftDev0125-hub/PDFRead)
 
 Monorepo with a **frontend** (React) and **backend** (FastAPI) for uploading lab-report PDFs/images, extracting **all biomarkers**, standardizing names/units into English, and classifying each result as **optimal**, **normal**, or **out of range** using the report’s age/sex-specific reference ranges.
 
@@ -10,7 +10,7 @@ Monorepo with a **frontend** (React) and **backend** (FastAPI) for uploading lab
 
 - **Python** 3.11+ recommended (3.10+ should work)
 - **Node.js** 18+ and npm
-- Optional: **Tesseract** for OCR; **OpenAI API key** for LLM extraction; **Google Cloud** service account + target sheet for Sheets sync
+- Optional: **OpenAI API key** for LLM extraction
 
 ## Structure
 
@@ -29,7 +29,7 @@ cp backend/.env.example backend/.env
 copy backend\.env.example backend\.env
 ```
 
-Edit `backend/.env` — set `OPENAI_API_KEY` and/or Google variables if you use those features.
+Edit `backend/.env` — set `OPENAI_API_KEY` if you want LLM extraction.
 
 2. Start backend and frontend in two terminals (see below).
 
@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-Open the UI at `http://localhost:5173`.
+Open the UI at `http://localhost:3000`.
 
 ## Suggested cloud resources (no deployment required)
 
@@ -63,28 +63,14 @@ Open the UI at `http://localhost:5173`.
 - **Secrets**: managed secrets store (AWS Secrets Manager / GCP Secret Manager) for `OPENAI_API_KEY`.
 - **Observability**: centralized logs + traces (CloudWatch + X-Ray, or GCP Logging + Trace).
 
-## Option A: LLM + Google Sheets setup
+## OpenAI setup
 
 ### OpenAI
 
 - Set `OPENAI_API_KEY` in `backend/.env`
 - Optional: set `OPENAI_MODEL` (default `gpt-4.1-mini`)
 
-### Google Sheets (easiest: Service Account)
+### Notes
 
-- Create a Google **Service Account** and download its JSON key.
-- In [Google Cloud Console](https://console.cloud.google.com/) for that key’s project, enable **Google Sheets API** (and **Google Drive API** if you hit odd errors).
-- Open the target spreadsheet in Google Sheets, click **Share**, and add the **service account email** (the `client_email` in the JSON) with role **Editor**. **Viewer is not enough**—writes will fail with `403` if the account cannot edit cells. “Anyone with the link” view access does **not** grant the service account edit rights; you must invite that email explicitly.
-- Set:
-  - `GOOGLE_SERVICE_ACCOUNT_JSON` (file path or inline JSON)
-  - `GOOGLE_SHEETS_SPREADSHEET_ID`
-  - `GOOGLE_SHEETS_WORKSHEET` (tab name), or optional `GOOGLE_SHEETS_WORKSHEET_ID` (the `gid` from the sheet URL)
-
-When configured, each `POST /api/extract/{fileId}` syncs rows to the sheet (updates an existing student row when UCI/Student matches, otherwise appends).
-
-**Check access:** from the repo root, run `python backend/scripts/check_google_sheets_access.py` (use the same Python/venv as the backend). Exit code `0` means a test row was written successfully; `2` means read works but write is blocked (almost always sharing role).
-
-### OCR (for scanned PDFs)
-
-If you want OCR to work, install Tesseract and set `TESSERACT_CMD` if needed.
+- This app extracts **visible PDF text only** (OCR is disabled by design).
 
