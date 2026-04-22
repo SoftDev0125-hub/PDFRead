@@ -76,10 +76,12 @@ def extract_lab_schema_heuristic(pages: list[tuple[int, str]]) -> ExtractedLabRe
     # Biomarker rows: try to capture common "NAME  VALUE  UNIT  RANGE" patterns per line.
     # Example: "Glucose  92  mg/dL  70-99"
     line_re = re.compile(
-        r"^(?P<name>[A-Za-z][A-Za-z0-9 \-()/%,.+]{1,60}?)\s{2,}"
-        r"(?P<value>[-+]?\d+(?:\.\d+)?)\s{1,}"
-        r"(?P<unit>[A-Za-z/%µμ\-\d]+)?\s{1,}"
-        r"(?P<range>(?:<|>|≤|≥)?\s*[-+]?\d+(?:\.\d+)?\s*(?:-|–|to)?\s*[-+]?\d*(?:\.\d+)?)?\s*$"
+        r"^(?!\s*(?:page|patient|name|date|reported|collected)\b)"
+        r"(?P<name>[A-Za-z][A-Za-z0-9 \-()/%,.+]{1,80}?)\s+"
+        r"(?P<value>[<>≤≥]?\s*[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?)\s*"
+        r"(?P<unit>[A-Za-z/%µμ][A-Za-z0-9/%µμ\-\^]*)?\s*"
+        r"(?P<range>(?:<|>|≤|≥)?\s*[-+]?\d+(?:\.\d+)?(?:\s*(?:-|–|to)\s*[-+]?\d+(?:\.\d+)?)?)?\s*$",
+        flags=re.IGNORECASE,
     )
     for page_idx, text in pages:
         for raw_line in (text or "").splitlines():

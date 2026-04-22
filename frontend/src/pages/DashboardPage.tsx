@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
 import {
   deleteUploadedFile,
   downloadFileUrl,
@@ -22,36 +21,6 @@ function formatBytes(bytes: number): string {
     u++
   }
   return `${b.toFixed(u === 0 ? 0 : 1)} ${units[u]}`
-}
-
-function FieldRow({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div className="grid grid-cols-12 gap-3 py-2">
-      <div className="col-span-5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
-      <div className="col-span-7 text-sm text-slate-900">{value ?? '—'}</div>
-    </div>
-  )
-}
-
-function EvidenceBlock({ v2, field }: { v2: ExtractedAuthorizationV2; field: keyof ExtractedAuthorizationV2 }) {
-  const item = v2[field] as unknown as { evidence?: { page: number | null; snippet: string | null } }
-  const ev = item?.evidence
-  if (!ev?.snippet) return null
-  return (
-    <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-      <div className="flex items-center justify-between gap-3">
-        <div className="font-semibold text-slate-700">
-        Evidence{typeof ev.page === 'number' ? ` (page ${ev.page + 1})` : ''}
-      </div>
-        <div className="text-[11px] text-slate-500">matched snippet</div>
-      </div>
-      <div className="mt-2 whitespace-pre-wrap rounded-lg bg-white/60 p-2 leading-relaxed text-slate-800">
-        {ev.snippet}
-      </div>
-    </div>
-  )
 }
 
 function EvidenceMini({ v2, field }: { v2: ExtractedAuthorizationV2; field: keyof ExtractedAuthorizationV2 }) {
@@ -77,39 +46,82 @@ function statusPill(status: string | null | undefined): { text: string; classNam
 }
 
 export function DashboardPage() {
-  const qc = useQueryClient()
   const [selected, setSelected] = useState<UploadedFile | null>(null)
   const [lastResult, setLastResult] = useState<ExtractionResult | null>(null)
   const [showEvidence, setShowEvidence] = useState(true)
 
-  const filesQ = useQuery({ queryKey: ['files'], queryFn: listFiles })
+  const [files, setFiles] = useState<UploadedFile[]>([])
+  const [, setFilesLoading] = useState(false)
+  const [, setFilesError] = useState<string | null>(null)
 
-  const uploadM = useMutation({
-    mutationFn: uploadPdf,
-    onSuccess: async (res) => {
-      await qc.invalidateQueries({ queryKey: ['files'] })
+  const [, setUploadPending] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const [extractPending, setExtractPending] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
+
+  const [deletePending, setDeletePending] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function refreshFiles(): Promise<void> {
+    setFilesLoading(true)
+    setFilesError(null)
+    try {
+      const res = await listFiles()
+      setFiles(res.files ?? [])
+    } catch (e) {
+      setFilesError((e as Error).message)
+    } finally {
+      setFilesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshFiles()
+  }, [])
+
+  async function onUpload(file: File): Promise<void> {
+    setUploadPending(true)
+    setUploadError(null)
+    try {
+      const res = await uploadPdf(file)
+      await refreshFiles()
       setSelected(res.file)
       setLastResult(null)
-    },
-  })
+    } catch (e) {
+      setUploadError((e as Error).message)
+    } finally {
+      setUploadPending(false)
+    }
+  }
 
-  const extractM = useMutation({
-    mutationFn: extract,
-    onSuccess: (res) => {
+  async function onExtract(fileId: string): Promise<void> {
+    setExtractPending(true)
+    setExtractError(null)
+    try {
+      const res = await extract(fileId)
       setLastResult(res)
-    },
-  })
+    } catch (e) {
+      setExtractError((e as Error).message)
+    } finally {
+      setExtractPending(false)
+    }
+  }
 
-  const deleteM = useMutation({
-    mutationFn: deleteUploadedFile,
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['files'] })
+  async function onDelete(fileId: string): Promise<void> {
+    setDeletePending(true)
+    setDeleteError(null)
+    try {
+      await deleteUploadedFile(fileId)
+      await refreshFiles()
       setSelected(null)
       setLastResult(null)
-    },
-  })
-
-  const files = filesQ.data?.files ?? []
+    } catch (e) {
+      setDeleteError((e as Error).message)
+    } finally {
+      setDeletePending(false)
+    }
+  }
   const selectedFromList = useMemo(() => {
     if (!selected) return null
     return files.find((f) => f.id === selected.id) ?? selected
@@ -153,10 +165,10 @@ export function DashboardPage() {
               <input
                 className="hidden"
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/*"
                 onChange={(e) => {
                   const f = e.currentTarget.files?.[0]
-                  if (f) uploadM.mutate(f)
+                  if (f) void onUpload(f)
                   e.currentTarget.value = ''
                 }}
               />
@@ -234,9 +246,9 @@ export function DashboardPage() {
                             `Delete "${f.originalName}"? This removes the uploaded PDF and its saved JSON result.`
                           )
                           if (!ok) return
-                          deleteM.mutate(f.id)
+                          void onDelete(f.id)
                         }}
-                        disabled={deleteM.isPending}
+                        disabled={deletePending}
                         title="Delete uploaded file"
                       >
                         Delete
@@ -248,15 +260,15 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {deleteM.isError && (
+          {deleteError && (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-              {(deleteM.error as Error).message}
+              {deleteError}
             </div>
           )}
 
-          {uploadM.isError && (
+          {uploadError && (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-              {(uploadM.error as Error).message}
+              {uploadError}
             </div>
           )}
         </section>
@@ -269,13 +281,13 @@ export function DashboardPage() {
             </div>
             <button
               className="btn-primary"
-              disabled={!selectedFromList || extractM.isPending}
+              disabled={!selectedFromList || extractPending}
               onClick={() => {
                 if (!selectedFromList) return
-                extractM.mutate(selectedFromList.id)
+                void onExtract(selectedFromList.id)
               }}
             >
-              {extractM.isPending ? 'Extracting…' : 'Run extraction'}
+              {extractPending ? 'Extracting…' : 'Run extraction'}
             </button>
           </div>
 
@@ -505,9 +517,9 @@ export function DashboardPage() {
             </div>
           )}
 
-          {extractM.isError && (
+          {extractError && (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-              {(extractM.error as Error).message}
+              {extractError}
             </div>
           )}
         </section>

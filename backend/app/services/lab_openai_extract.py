@@ -20,25 +20,33 @@ def _client() -> OpenAI:
 
 def _make_pages_text(pages: list[tuple[int, str]]) -> str:
     """
-    Speed/accuracy trade-off:
-    - Sending full OCR text can be very slow/expensive.
-    - We keep lines that are likely to contain demographics + biomarker rows, plus a small amount of nearby context.
-    This preserves accuracy for lab tables while dramatically reducing tokens for most reports.
+    Accuracy-first extraction input:
+    - We MUST not drop biomarker rows.
+    - We still avoid sending irrelevant boilerplate by extracting:
+      - a small header slice from each page (demographics/report metadata)
+      - all lines that look like analyte/result rows
+      - a small amount of context around those rows
     """
-    keep_re = re.compile(
-        r"(?i)\b(age|sex|gender|dob|date of birth|patient|collected|received|reported|reference|range|unit|flag)\b"
-        r"|(?:\d+\s*(?:mg/dl|mmol/l|g/dl|iu/l|u/l|ng/ml|pg/ml|%|x10\^?\d+|10\^?\d+|cells?/u?l|m?eq/l)\b)"
-        r"|(?:\bH\b|\bL\b)\s*$"
-        r"|(?:≤|≥|<|>|–|-)\s*\d"
+    # "Row-ish": analyte name + value (supports <, >, scientific notation).
+    rowish_re = re.compile(
+        r"^[A-Za-z][A-Za-z0-9 \-()/%,.+]{2,80}\s+"
+        r"(?:[<>≤≥]?\s*)?"
+        r"[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?"
+        r"(?:\s*[A-Za-z/%µμ][A-Za-z0-9/%µμ\-\^]*)?"
+        r"(?:\s+(?:<|>|≤|≥)?\s*[-+]?\d+(?:\.\d+)?(?:\s*(?:-|–|to)\s*[-+]?\d+(?:\.\d+)?)?)?"
+        r"\s*$",
+        re.IGNORECASE,
     )
-    # Generic "looks like a lab row" heuristic: name-ish + number-ish.
-    rowish_re = re.compile(r"^[A-Za-z][A-Za-z0-9 \-()/%,.+]{2,60}\s+\d")
+    header_keep_re = re.compile(
+        r"(?i)\b(age|sex|gender|dob|date of birth|patient|name|collected|received|reported|reference|range|unit|lab)\b"
+    )
 
-    max_total_lines = 220
-    context_radius = 1
+    header_lines_per_page = 30
+    context_radius = 2
+    max_rows_total = 1200  # cap safety; should cover typical reports
 
     parts: list[str] = []
-    kept_total = 0
+    rows_kept = 0
 
     for idx, text in pages:
         lines = (text or "").splitlines()
@@ -46,33 +54,35 @@ def _make_pages_text(pages: list[tuple[int, str]]) -> str:
             continue
 
         hit_idxs: set[int] = set()
-        for i, line in enumerate(lines):
-            l = line.strip()
+
+        # Keep header slice (metadata/demographics), but only meaningful lines.
+        for i in range(min(header_lines_per_page, len(lines))):
+            l = lines[i].strip()
             if not l:
                 continue
-            if keep_re.search(l) or rowish_re.match(l):
+            if header_keep_re.search(l) or len(l) < 120:
+                hit_idxs.add(i)
+
+        # Keep ALL detected biomarker/result rows + context around them.
+        for i, raw in enumerate(lines):
+            l = raw.strip()
+            if not l:
+                continue
+            if rowish_re.match(l):
                 for j in range(max(0, i - context_radius), min(len(lines), i + context_radius + 1)):
                     hit_idxs.add(j)
-
-        # If we found nothing on a page, keep the first few lines (often header demographics).
-        if not hit_idxs:
-            hit_idxs.update(range(0, min(18, len(lines))))
+                rows_kept += 1
+                if rows_kept >= max_rows_total:
+                    break
 
         selected = [lines[i] for i in sorted(hit_idxs)]
-        # Cap per page to avoid one noisy page dominating.
-        if len(selected) > 90:
-            selected = selected[:90]
-
         if selected:
-            remaining = max_total_lines - kept_total
-            if remaining <= 0:
-                break
-            selected = selected[:remaining]
-            kept_total += len(selected)
             parts.append(f"--- PAGE {idx} ---\n" + "\n".join(selected))
+        if rows_kept >= max_rows_total:
+            break
 
-    # If we ended up with almost nothing (e.g., very short 1-page report), fall back to full text.
-    if kept_total < 30:
+    # If we failed to detect any rows (likely an unusual layout), fall back to full text.
+    if rows_kept == 0:
         return "\n\n".join([f"--- PAGE {idx} ---\n{text}" for idx, text in pages])
 
     return "\n\n".join(parts)
@@ -83,7 +93,7 @@ def _schema_prompt() -> str:
 
 Goal:
 - Extract patient demographics (age, sex) as shown in the report.
-- Extract ALL available biomarkers / analytes from the report.
+- Extract ALL available biomarkers / analytes from the report (do not omit rows).
 - Standardize biomarker names and units into English when possible.
 - Classify each biomarker result as: "optimal", "normal", or "out_of_range".
 
@@ -126,6 +136,7 @@ Data rules:
 - age_years should be a number if possible.
 - report_date should be ISO-8601 (YYYY-MM-DD) when possible; otherwise keep the original string and add a warning.
 - If a biomarker row repeats on multiple pages, keep the most complete one (or include duplicates only if clearly distinct panels).
+- If you see a lab table row that looks like an analyte + result, include it even if unit/range is missing.
 """
 
 

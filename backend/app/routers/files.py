@@ -48,6 +48,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)) -> dict[st
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
 
+    # Accept PDFs and common image formats (lab reports are often scanned images).
+    # We do not hard-block unknown types, but we record the provided content type.
+
     uploads_dir = _uploads_dir(request)
     fid = uuid.uuid4().hex
     safe_name = Path(file.filename).name
