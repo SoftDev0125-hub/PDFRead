@@ -12,17 +12,20 @@ export type FilesResponse = {
 }
 
 export type ExtractedAuthorization = {
-  student_name: string | null
-  student_id: string | null
-  district: string | null
-  service_type: string | null
-  authorized_minutes: number | null
-  start_date: string | null
-  end_date: string | null
-  authorization_number: string | null
-  case_manager_name: string | null
-  subject_areas: string[] | null
-  notes: string | null
+  patient_name: string | null
+  age_years: number | null
+  sex: string | null
+  report_date: string | null
+  source: string | null
+  biomarkers: Array<{
+    name: string | null
+    original_name: string | null
+    value: number | string | null
+    unit: string | null
+    reference_range_text: string | null
+    status: 'optimal' | 'normal' | 'out_of_range' | 'unknown' | null
+    notes: string | null
+  }>
   warnings: string[]
 }
 
@@ -38,17 +41,20 @@ export type FieldValue<T> = {
 }
 
 export type ExtractedAuthorizationV2 = {
-  student_name: FieldValue<string>
-  student_id: FieldValue<string>
-  district: FieldValue<string>
-  service_type: FieldValue<string>
-  authorized_minutes: FieldValue<number>
-  start_date: FieldValue<string>
-  end_date: FieldValue<string>
-  authorization_number: FieldValue<string>
-  case_manager_name: FieldValue<string>
-  subject_areas: FieldValue<string[]>
-  notes: FieldValue<string>
+  patient_name: FieldValue<string>
+  age_years: FieldValue<number>
+  sex: FieldValue<string>
+  report_date: FieldValue<string>
+  source: FieldValue<string>
+  biomarkers: Array<{
+    name: FieldValue<string>
+    original_name: FieldValue<string>
+    value: FieldValue<number | string>
+    unit: FieldValue<string>
+    reference_range_text: FieldValue<string>
+    status: FieldValue<'optimal' | 'normal' | 'out_of_range' | 'unknown'>
+    notes: FieldValue<string>
+  }>
 
   warnings: string[]
   validations: string[]
@@ -60,15 +66,6 @@ export type PageRouting = {
   chars: number
 }
 
-export type SheetWriteTroubleshooting = {
-  serviceAccountEmail?: string | null
-  steps: string[]
-}
-
-export type SheetWriteResult =
-  | { ok: true; mode?: string; updatedRow?: number; studentRowMatched?: boolean; spreadsheetId?: string }
-  | { ok: false; error?: string; detail?: string; troubleshooting?: SheetWriteTroubleshooting }
-
 export type ExtractionResult = {
   fileId: string
   originalName: string
@@ -77,7 +74,6 @@ export type ExtractionResult = {
   extractedV2?: ExtractedAuthorizationV2
   pageRouting?: PageRouting[]
   llmUsed?: boolean
-  sheetWrite?: SheetWriteResult | null
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {

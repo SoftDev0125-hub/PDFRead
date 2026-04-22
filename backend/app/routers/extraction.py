@@ -8,10 +8,9 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.services.openai_extract import extract_with_openai_two_pass
+from app.services.lab_openai_extract import extract_with_openai_two_pass
+from app.services.lab_schema import ExtractedLabReportV2, extract_lab_schema_heuristic
 from app.services.page_pipeline import extract_pages_best_effort
-from app.services.schema_extract import ExtractedAuthorizationV2, extract_schema_from_pages
-from app.services.sheets_writer import append_authorization_row, troubleshooting_for_sheets_permission_denied
 
 
 router = APIRouter(tags=["extraction"])
@@ -32,23 +31,29 @@ def _load_meta(uploads_dir: Path) -> dict[str, Any]:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def _flatten_v2(v2: ExtractedAuthorizationV2) -> dict[str, Any]:
+def _flatten_v2(v2: ExtractedLabReportV2) -> dict[str, Any]:
     """
     Backwards-compatible `extracted` object (flat values) for the frontend,
     while still returning v2 evidence under `extractedV2`.
     """
     return {
-        "student_name": v2.student_name.value,
-        "student_id": v2.student_id.value,
-        "district": v2.district.value,
-        "service_type": v2.service_type.value,
-        "authorized_minutes": v2.authorized_minutes.value,
-        "start_date": v2.start_date.value,
-        "end_date": v2.end_date.value,
-        "authorization_number": v2.authorization_number.value,
-        "case_manager_name": v2.case_manager_name.value,
-        "subject_areas": v2.subject_areas.value,
-        "notes": v2.notes.value,
+        "patient_name": v2.patient_name.value,
+        "age_years": v2.age_years.value,
+        "sex": v2.sex.value,
+        "report_date": v2.report_date.value,
+        "source": v2.source.value,
+        "biomarkers": [
+            {
+                "name": b.name.value,
+                "original_name": b.original_name.value,
+                "value": b.value.value,
+                "unit": b.unit.value,
+                "reference_range_text": b.reference_range_text.value,
+                "status": b.status.value,
+                "notes": b.notes.value,
+            }
+            for b in v2.biomarkers
+        ],
         "warnings": v2.warnings,
     }
 
@@ -69,52 +74,22 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
     page_texts = extract_pages_best_effort(str(pdf_path))
     pages_for_schema = [(p.page_index, p.text) for p in page_texts]
     used_llm = False
-    if os.getenv("OPENAI_API_KEY"):
+    extracted_v2: ExtractedLabReportV2
+    openai_configured = bool(os.getenv("OPENAI_API_KEY"))
+
+    if openai_configured:
         try:
             extracted_v2 = extract_with_openai_two_pass(pages_for_schema)
             used_llm = True
         except Exception as e:
-            # Fall back to heuristic extraction, but surface the reason.
-            extracted_v2 = extract_schema_from_pages(pages_for_schema)
-            extracted_v2.warnings.append(f"LLM extraction failed; fell back to heuristic: {type(e).__name__}")
+            extracted_v2 = extract_lab_schema_heuristic(pages_for_schema)
+            extracted_v2.warnings.append(
+                f"LLM extraction failed; fell back to heuristic: {type(e).__name__}"
+            )
     else:
-        extracted_v2 = extract_schema_from_pages(pages_for_schema)
+        extracted_v2 = extract_lab_schema_heuristic(pages_for_schema)
+        extracted_v2.warnings.append("OPENAI_API_KEY not set; used heuristic extraction.")
     extracted_flat = _flatten_v2(extracted_v2)
-
-    sheet_write: dict[str, Any] | None = None
-    if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") and os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID"):
-        try:
-            sheet_write = append_authorization_row(
-                extracted_flat,
-                meta={
-                    "fileId": file_id,
-                    "originalName": rec.get("originalName"),
-                    "receivedAt": datetime.now(timezone.utc).date().isoformat(),
-                },
-            )
-            if sheet_write.get("ok") and sheet_write.get("studentRowMatched") is False:
-                extracted_v2.warnings.append(
-                    "Google Sheets: no existing row matched this student (UCI/Student); a new row was appended."
-                )
-        except Exception as e:
-            detail = str(e).strip() or repr(e)
-            extracted_v2.warnings.append(f"Google Sheets write failed: {type(e).__name__}: {detail[:500]}")
-            sheet_write = {"ok": False, "error": f"{type(e).__name__}", "detail": detail[:500]}
-            err_l = detail.lower()
-            is_403 = (
-                "403" in detail
-                or "permission_denied" in err_l
-                or type(e).__name__ == "PermissionError"
-            )
-            try:
-                from gspread.exceptions import APIError as GspreadAPIError
-
-                if isinstance(e, GspreadAPIError) and getattr(e, "code", None) == 403:
-                    is_403 = True
-            except ImportError:
-                pass
-            if is_403:
-                sheet_write["troubleshooting"] = troubleshooting_for_sheets_permission_denied()
 
     payload = {
         "fileId": file_id,
@@ -123,7 +98,6 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
         "extractedV2": extracted_v2.model_dump(),
         "pageRouting": [{"page": p.page_index, "route": p.route, "chars": len(p.text)} for p in page_texts],
         "llmUsed": used_llm,
-        "sheetWrite": sheet_write,
         "extractedAt": datetime.now(timezone.utc).isoformat(),
     }
 

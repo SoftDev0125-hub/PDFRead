@@ -1,8 +1,8 @@
-# Authorization Document Reader
+# Lab Report Biomarker Extractor
 
 **Repository:** [github.com/SoftDev0125-hub/Authorization-Document-Reader](https://github.com/SoftDev0125-hub/Authorization-Document-Reader)
 
-Monorepo with a **frontend** (React) and **backend** (FastAPI) for ingesting authorization PDFs, extracting structured fields, and exporting result files.
+Monorepo with a **frontend** (React) and **backend** (FastAPI) for uploading lab-report PDFs/images, extracting **all biomarkers**, standardizing names/units into English, and classifying each result as **optimal**, **normal**, or **out of range** using the report’s age/sex-specific reference ranges.
 
 **Reviewer materials:** one-page write-up + Loom outline → [docs/SUBMISSION_FOR_REVIEWERS.md](docs/SUBMISSION_FOR_REVIEWERS.md). For a private repo, add the reviewer under GitHub **Settings → Collaborators** (Read is enough to review code).
 
@@ -41,7 +41,7 @@ python -m venv .venv
 # Windows:
 .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8011
+uvicorn app.main:app --reload --port 8012
 ```
 
 ### Frontend
@@ -53,6 +53,15 @@ npm run dev
 ```
 
 Open the UI at `http://localhost:5173`.
+
+## Suggested cloud resources (no deployment required)
+
+- **Frontend**: static hosting on S3 + CloudFront (or Vercel/Netlify).
+- **Backend API**: containerized FastAPI on ECS Fargate (or Cloud Run on GCP).
+- **Storage**: object storage (S3 / GCS) for uploaded PDFs and extracted JSON.
+- **Async extraction** (recommended for large PDFs/OCR): queue + workers (SQS + ECS workers, or Pub/Sub + Cloud Run jobs).
+- **Secrets**: managed secrets store (AWS Secrets Manager / GCP Secret Manager) for `OPENAI_API_KEY`.
+- **Observability**: centralized logs + traces (CloudWatch + X-Ray, or GCP Logging + Trace).
 
 ## Option A: LLM + Google Sheets setup
 

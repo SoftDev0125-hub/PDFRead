@@ -13,6 +13,4 @@ pytesseract>=0.3.10
 
 # LLM + Sheets
 openai>=1.40.0
-gspread>=6.1.4
-google-auth>=2.33.0
 

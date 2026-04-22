@@ -54,6 +54,14 @@ function EvidenceBlock({ v2, field }: { v2: ExtractedAuthorizationV2; field: key
   )
 }
 
+function statusPill(status: string | null | undefined): { text: string; className: string } {
+  const s = (status ?? 'unknown').toLowerCase()
+  if (s === 'optimal') return { text: 'OPTIMAL', className: 'bg-emerald-100 text-emerald-900' }
+  if (s === 'normal') return { text: 'NORMAL', className: 'bg-slate-100 text-slate-900' }
+  if (s === 'out_of_range') return { text: 'OUT OF RANGE', className: 'bg-rose-100 text-rose-900' }
+  return { text: 'UNKNOWN', className: 'bg-amber-100 text-amber-900' }
+}
+
 export function DashboardPage() {
   const qc = useQueryClient()
   const [selected, setSelected] = useState<UploadedFile | null>(null)
@@ -243,7 +251,7 @@ export function DashboardPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">Extracted data</div>
-              <div className="mt-1 text-xs text-slate-600">Schema + evidence + validations</div>
+              <div className="mt-1 text-xs text-slate-600">Demographics + biomarkers + evidence</div>
             </div>
             <button
               className="btn-primary"
@@ -280,76 +288,90 @@ export function DashboardPage() {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Extracted fields
+                    Patient & report
                   </div>
                   <div>
-                    <FieldRow label="Student name" value={lastResult.extracted.student_name} />
+                    <FieldRow label="Patient name" value={lastResult.extracted.patient_name} />
                     {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="student_name" />
+                      <EvidenceBlock v2={lastResult.extractedV2} field="patient_name" />
                     )}
                   </div>
                   <div>
-                    <FieldRow label="Student ID" value={lastResult.extracted.student_id} />
+                    <FieldRow label="Age (years)" value={lastResult.extracted.age_years} />
                     {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="student_id" />
+                      <EvidenceBlock v2={lastResult.extractedV2} field="age_years" />
                     )}
                   </div>
                   <div>
-                    <FieldRow label="District" value={lastResult.extracted.district} />
+                    <FieldRow label="Sex" value={lastResult.extracted.sex} />
                     {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="district" />
+                      <EvidenceBlock v2={lastResult.extractedV2} field="sex" />
                     )}
                   </div>
                   <div>
-                    <FieldRow label="Service type" value={lastResult.extracted.service_type} />
+                    <FieldRow label="Report date" value={lastResult.extracted.report_date} />
                     {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="service_type" />
+                      <EvidenceBlock v2={lastResult.extractedV2} field="report_date" />
                     )}
                   </div>
                   <div>
-                    <FieldRow label="Authorized minutes" value={lastResult.extracted.authorized_minutes} />
+                    <FieldRow label="Source" value={lastResult.extracted.source} />
                     {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="authorized_minutes" />
+                      <EvidenceBlock v2={lastResult.extractedV2} field="source" />
                     )}
                   </div>
-                  <div>
-                    <FieldRow label="Start date" value={lastResult.extracted.start_date} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="start_date" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="End date" value={lastResult.extracted.end_date} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="end_date" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Authorization number" value={lastResult.extracted.authorization_number} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="authorization_number" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Case manager" value={lastResult.extracted.case_manager_name} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="case_manager_name" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Subject areas" value={lastResult.extracted.subject_areas?.join(', ') ?? null} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="subject_areas" />
-                    )}
-                  </div>
-                  <div className="border-t border-slate-200 pt-3">
-                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</div>
-                    <div className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
-                      {lastResult.extracted.notes ?? '—'}
+
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Biomarkers ({lastResult.extracted.biomarkers?.length ?? 0})
+                      </div>
+                      <div className="text-[11px] text-slate-500">standardized name + unit</div>
                     </div>
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="notes" />
-                    )}
+
+                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200">
+                      <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                        <div className="col-span-4">Biomarker</div>
+                        <div className="col-span-2 text-right">Value</div>
+                        <div className="col-span-2">Unit</div>
+                        <div className="col-span-3">Range</div>
+                        <div className="col-span-1 text-right">Status</div>
+                      </div>
+                      <div className="divide-y divide-slate-200">
+                        {(lastResult.extracted.biomarkers ?? []).length === 0 ? (
+                          <div className="px-4 py-6 text-sm text-slate-600">
+                            No biomarkers extracted yet (check warnings or enable the OpenAI key for robust extraction).
+                          </div>
+                        ) : (
+                          (lastResult.extracted.biomarkers ?? []).map((b, idx) => {
+                            const pill = statusPill(b.status)
+                            const label = b.name ?? b.original_name ?? '—'
+                            return (
+                              <div key={`${label}-${idx}`} className="grid grid-cols-12 items-center px-3 py-2 text-sm">
+                                <div className="col-span-4 min-w-0">
+                                  <div className="truncate font-medium text-slate-900">{label}</div>
+                                  {b.original_name && b.name && b.original_name !== b.name ? (
+                                    <div className="truncate text-xs text-slate-500">{b.original_name}</div>
+                                  ) : null}
+                                </div>
+                                <div className="col-span-2 text-right font-medium text-slate-900">
+                                  {b.value ?? '—'}
+                                </div>
+                                <div className="col-span-2 text-slate-700">{b.unit ?? '—'}</div>
+                                <div className="col-span-3 text-xs text-slate-700">
+                                  {b.reference_range_text ?? '—'}
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <span className={['inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold', pill.className].join(' ')}>
+                                    {pill.text}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -389,58 +411,6 @@ export function DashboardPage() {
                   ) : (
                     <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                       No page routing data available yet.
-                    </div>
-                  )}
-
-                  {lastResult.sheetWrite != null && (
-                    <div
-                      className={[
-                        'mt-4 rounded-2xl border p-4 text-sm',
-                        lastResult.sheetWrite.ok
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
-                          : 'border-rose-200 bg-rose-50 text-rose-950',
-                      ].join(' ')}
-                    >
-                      <div className="font-semibold">Google Sheets</div>
-                      {lastResult.sheetWrite.ok ? (
-                        <div className="mt-2 space-y-1 text-emerald-900">
-                          <div>
-                            {lastResult.sheetWrite.mode === 'masterfile_update'
-                              ? `Updated existing masterfile row ${lastResult.sheetWrite.updatedRow ?? '—'}.`
-                              : 'Appended a new row (no matching UCI/Student in the sheet).'}
-                          </div>
-                          {lastResult.sheetWrite.studentRowMatched === false && (
-                            <div className="text-xs opacity-90">
-                              Add this student to the sheet first, or align UCI/Student columns with the PDF, so
-                              updates land on the correct row.
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-2 space-y-3">
-                          <div className="whitespace-pre-wrap break-words">
-                            {(lastResult.sheetWrite as { error?: string; detail?: string }).error}
-                            {(lastResult.sheetWrite as { detail?: string }).detail
-                              ? ` — ${(lastResult.sheetWrite as { detail?: string }).detail}`
-                              : null}
-                          </div>
-                          {(lastResult.sheetWrite as { troubleshooting?: { serviceAccountEmail?: string | null; steps: string[] } }).troubleshooting && (
-                            <div className="rounded-xl border border-rose-300/60 bg-white/80 p-3 text-xs text-rose-950">
-                              <div className="font-semibold">How to fix</div>
-                              {(lastResult.sheetWrite as { troubleshooting: { serviceAccountEmail?: string | null } }).troubleshooting.serviceAccountEmail ? (
-                                <div className="mt-2 break-all font-mono text-[11px]">
-                                  {(lastResult.sheetWrite as { troubleshooting: { serviceAccountEmail?: string | null } }).troubleshooting.serviceAccountEmail}
-                                </div>
-                              ) : null}
-                              <ul className="mt-2 list-disc space-y-1 pl-4">
-                                {(lastResult.sheetWrite as { troubleshooting: { steps: string[] } }).troubleshooting.steps.map((s) => (
-                                  <li key={s}>{s}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
 

@@ -44,6 +44,5 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "openaiConfigured": bool(os.getenv("OPENAI_API_KEY")),
-        "sheetsConfigured": bool(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") and os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID")),
     }
 
