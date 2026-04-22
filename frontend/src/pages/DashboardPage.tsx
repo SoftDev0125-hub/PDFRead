@@ -54,6 +54,20 @@ function EvidenceBlock({ v2, field }: { v2: ExtractedAuthorizationV2; field: key
   )
 }
 
+function EvidenceMini({ v2, field }: { v2: ExtractedAuthorizationV2; field: keyof ExtractedAuthorizationV2 }) {
+  const item = v2[field] as unknown as { evidence?: { page: number | null; snippet: string | null } }
+  const ev = item?.evidence
+  if (!ev?.snippet) return null
+  return (
+    <div className="mt-1 text-[11px] leading-relaxed text-slate-600">
+      <span className="font-semibold text-slate-500">Matched snippet</span>
+      {typeof ev.page === 'number' ? <span className="text-slate-400">{` (page ${ev.page + 1})`}</span> : null}
+      <span className="text-slate-400">:</span>{' '}
+      <span className="text-slate-700">{ev.snippet}</span>
+    </div>
+  )
+}
+
 function statusPill(status: string | null | undefined): { text: string; className: string } {
   const s = (status ?? 'unknown').toLowerCase()
   if (s === 'optimal') return { text: 'OPTIMAL', className: 'bg-emerald-100 text-emerald-900' }
@@ -360,35 +374,67 @@ export function DashboardPage() {
                   <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Patient & extracted data
                   </div>
-                  <div>
-                    <FieldRow label="Patient name" value={lastResult.extracted.patient_name} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="patient_name" />
-                    )}
+                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Patient Name
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                        {lastResult.extracted.patient_name ?? '—'}
+                      </div>
+                      {showEvidence && lastResult.extractedV2 && (
+                        <EvidenceMini v2={lastResult.extractedV2} field="patient_name" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Age (years)
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                        {lastResult.extracted.age_years ?? '—'}
+                      </div>
+                      {showEvidence && lastResult.extractedV2 && (
+                        <EvidenceMini v2={lastResult.extractedV2} field="age_years" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Sex
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                        {lastResult.extracted.sex ?? '—'}
+                      </div>
+                      {showEvidence && lastResult.extractedV2 && (
+                        <EvidenceMini v2={lastResult.extractedV2} field="sex" />
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <FieldRow label="Age (years)" value={lastResult.extracted.age_years} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="age_years" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Sex" value={lastResult.extracted.sex} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="sex" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Report date" value={lastResult.extracted.report_date} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="report_date" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Source" value={lastResult.extracted.source} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="source" />
-                    )}
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Report date
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                        {lastResult.extracted.report_date ?? '—'}
+                      </div>
+                      {showEvidence && lastResult.extractedV2 && (
+                        <EvidenceMini v2={lastResult.extractedV2} field="report_date" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Source
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                        {lastResult.extracted.source ?? '—'}
+                      </div>
+                      {showEvidence && lastResult.extractedV2 && (
+                        <EvidenceMini v2={lastResult.extractedV2} field="source" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-4 border-t border-slate-200 pt-3">
