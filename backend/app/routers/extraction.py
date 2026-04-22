@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.services.openai_extract import extract_with_openai_two_pass
 from app.services.page_pipeline import extract_pages_best_effort
 from app.services.schema_extract import ExtractedAuthorizationV2, extract_schema_from_pages
-from app.services.sheets_writer import append_authorization_row
+from app.services.sheets_writer import append_authorization_row, troubleshooting_for_sheets_permission_denied
 
 
 router = APIRouter(tags=["extraction"])
@@ -92,9 +92,29 @@ def extract(file_id: str, request: Request) -> dict[str, Any]:
                     "receivedAt": datetime.now(timezone.utc).date().isoformat(),
                 },
             )
+            if sheet_write.get("ok") and sheet_write.get("studentRowMatched") is False:
+                extracted_v2.warnings.append(
+                    "Google Sheets: no existing row matched this student (UCI/Student); a new row was appended."
+                )
         except Exception as e:
-            extracted_v2.warnings.append(f"Google Sheets write failed: {type(e).__name__}")
-            sheet_write = {"ok": False, "error": f"{type(e).__name__}"}
+            detail = str(e).strip() or repr(e)
+            extracted_v2.warnings.append(f"Google Sheets write failed: {type(e).__name__}: {detail[:500]}")
+            sheet_write = {"ok": False, "error": f"{type(e).__name__}", "detail": detail[:500]}
+            err_l = detail.lower()
+            is_403 = (
+                "403" in detail
+                or "permission_denied" in err_l
+                or type(e).__name__ == "PermissionError"
+            )
+            try:
+                from gspread.exceptions import APIError as GspreadAPIError
+
+                if isinstance(e, GspreadAPIError) and getattr(e, "code", None) == 403:
+                    is_403 = True
+            except ImportError:
+                pass
+            if is_403:
+                sheet_write["troubleshooting"] = troubleshooting_for_sheets_permission_denied()
 
     payload = {
         "fileId": file_id,

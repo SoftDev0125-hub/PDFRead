@@ -60,6 +60,15 @@ export type PageRouting = {
   chars: number
 }
 
+export type SheetWriteTroubleshooting = {
+  serviceAccountEmail?: string | null
+  steps: string[]
+}
+
+export type SheetWriteResult =
+  | { ok: true; mode?: string; updatedRow?: number; studentRowMatched?: boolean; spreadsheetId?: string }
+  | { ok: false; error?: string; detail?: string; troubleshooting?: SheetWriteTroubleshooting }
+
 export type ExtractionResult = {
   fileId: string
   originalName: string
@@ -67,6 +76,8 @@ export type ExtractionResult = {
   extracted: ExtractedAuthorization
   extractedV2?: ExtractedAuthorizationV2
   pageRouting?: PageRouting[]
+  llmUsed?: boolean
+  sheetWrite?: SheetWriteResult | null
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {

@@ -158,10 +158,12 @@ export function DashboardPage() {
               {files.map((f) => {
                 const active = selectedFromList?.id === f.id
                 return (
-                  <button
+                  <div
                     key={f.id}
+                    role="button"
+                    tabIndex={0}
                     className={[
-                      'grid w-full grid-cols-12 items-center px-3 py-3 text-left',
+                      'grid w-full cursor-pointer grid-cols-12 items-center px-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-slate-400/80 focus-visible:ring-offset-2',
                       active
                         ? 'bg-slate-100/70'
                         : 'bg-white hover:bg-slate-50/70',
@@ -169,6 +171,13 @@ export function DashboardPage() {
                     onClick={() => {
                       setSelected(f)
                       setLastResult(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelected(f)
+                        setLastResult(null)
+                      }
                     }}
                   >
                     <div className="col-span-6 min-w-0">
@@ -211,7 +220,7 @@ export function DashboardPage() {
                         Delete
                       </button>
                     </div>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -380,6 +389,58 @@ export function DashboardPage() {
                   ) : (
                     <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                       No page routing data available yet.
+                    </div>
+                  )}
+
+                  {lastResult.sheetWrite != null && (
+                    <div
+                      className={[
+                        'mt-4 rounded-2xl border p-4 text-sm',
+                        lastResult.sheetWrite.ok
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                          : 'border-rose-200 bg-rose-50 text-rose-950',
+                      ].join(' ')}
+                    >
+                      <div className="font-semibold">Google Sheets</div>
+                      {lastResult.sheetWrite.ok ? (
+                        <div className="mt-2 space-y-1 text-emerald-900">
+                          <div>
+                            {lastResult.sheetWrite.mode === 'masterfile_update'
+                              ? `Updated existing masterfile row ${lastResult.sheetWrite.updatedRow ?? '—'}.`
+                              : 'Appended a new row (no matching UCI/Student in the sheet).'}
+                          </div>
+                          {lastResult.sheetWrite.studentRowMatched === false && (
+                            <div className="text-xs opacity-90">
+                              Add this student to the sheet first, or align UCI/Student columns with the PDF, so
+                              updates land on the correct row.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 space-y-3">
+                          <div className="whitespace-pre-wrap break-words">
+                            {(lastResult.sheetWrite as { error?: string; detail?: string }).error}
+                            {(lastResult.sheetWrite as { detail?: string }).detail
+                              ? ` — ${(lastResult.sheetWrite as { detail?: string }).detail}`
+                              : null}
+                          </div>
+                          {(lastResult.sheetWrite as { troubleshooting?: { serviceAccountEmail?: string | null; steps: string[] } }).troubleshooting && (
+                            <div className="rounded-xl border border-rose-300/60 bg-white/80 p-3 text-xs text-rose-950">
+                              <div className="font-semibold">How to fix</div>
+                              {(lastResult.sheetWrite as { troubleshooting: { serviceAccountEmail?: string | null } }).troubleshooting.serviceAccountEmail ? (
+                                <div className="mt-2 break-all font-mono text-[11px]">
+                                  {(lastResult.sheetWrite as { troubleshooting: { serviceAccountEmail?: string | null } }).troubleshooting.serviceAccountEmail}
+                                </div>
+                              ) : null}
+                              <ul className="mt-2 list-disc space-y-1 pl-4">
+                                {(lastResult.sheetWrite as { troubleshooting: { steps: string[] } }).troubleshooting.steps.map((s) => (
+                                  <li key={s}>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

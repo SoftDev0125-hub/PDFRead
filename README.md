@@ -40,13 +40,16 @@ Open the UI at `http://localhost:5173`.
 ### Google Sheets (easiest: Service Account)
 
 - Create a Google **Service Account** and download its JSON key.
-- Share the target Google Sheet with the **service account email**.
+- In [Google Cloud Console](https://console.cloud.google.com/) for that key’s project, enable **Google Sheets API** (and **Google Drive API** if you hit odd errors).
+- Open the target spreadsheet in Google Sheets, click **Share**, and add the **service account email** (the `client_email` in the JSON) with role **Editor**. **Viewer is not enough**—writes will fail with `403` if the account cannot edit cells. “Anyone with the link” view access does **not** grant the service account edit rights; you must invite that email explicitly.
 - Set:
   - `GOOGLE_SERVICE_ACCOUNT_JSON` (file path or inline JSON)
   - `GOOGLE_SHEETS_SPREADSHEET_ID`
-  - `GOOGLE_SHEETS_WORKSHEET` (tab name)
+  - `GOOGLE_SHEETS_WORKSHEET` (tab name), or optional `GOOGLE_SHEETS_WORKSHEET_ID` (the `gid` from the sheet URL)
 
-When configured, each `POST /api/extract/{fileId}` will append a row to the sheet.
+When configured, each `POST /api/extract/{fileId}` syncs rows to the sheet (updates an existing student row when UCI/Student matches, otherwise appends).
+
+**Check access:** from the repo root, run `python backend/scripts/check_google_sheets_access.py` (use the same Python/venv as the backend). Exit code `0` means a test row was written successfully; `2` means read works but write is blocked (almost always sharing role).
 
 ### OCR (for scanned PDFs)
 

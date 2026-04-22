@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 .env
 
+# Google Cloud service account keys (local only; never commit)
+global-shard*.json
+
 # App data
 backend/data/
 
