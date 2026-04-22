@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any
 
 from openai import OpenAI
@@ -18,9 +19,62 @@ def _client() -> OpenAI:
 
 
 def _make_pages_text(pages: list[tuple[int, str]]) -> str:
+    """
+    Speed/accuracy trade-off:
+    - Sending full OCR text can be very slow/expensive.
+    - We keep lines that are likely to contain demographics + biomarker rows, plus a small amount of nearby context.
+    This preserves accuracy for lab tables while dramatically reducing tokens for most reports.
+    """
+    keep_re = re.compile(
+        r"(?i)\b(age|sex|gender|dob|date of birth|patient|collected|received|reported|reference|range|unit|flag)\b"
+        r"|(?:\d+\s*(?:mg/dl|mmol/l|g/dl|iu/l|u/l|ng/ml|pg/ml|%|x10\^?\d+|10\^?\d+|cells?/u?l|m?eq/l)\b)"
+        r"|(?:\bH\b|\bL\b)\s*$"
+        r"|(?:≤|≥|<|>|–|-)\s*\d"
+    )
+    # Generic "looks like a lab row" heuristic: name-ish + number-ish.
+    rowish_re = re.compile(r"^[A-Za-z][A-Za-z0-9 \-()/%,.+]{2,60}\s+\d")
+
+    max_total_lines = 220
+    context_radius = 1
+
     parts: list[str] = []
+    kept_total = 0
+
     for idx, text in pages:
-        parts.append(f"--- PAGE {idx} ---\n{text}")
+        lines = (text or "").splitlines()
+        if not lines:
+            continue
+
+        hit_idxs: set[int] = set()
+        for i, line in enumerate(lines):
+            l = line.strip()
+            if not l:
+                continue
+            if keep_re.search(l) or rowish_re.match(l):
+                for j in range(max(0, i - context_radius), min(len(lines), i + context_radius + 1)):
+                    hit_idxs.add(j)
+
+        # If we found nothing on a page, keep the first few lines (often header demographics).
+        if not hit_idxs:
+            hit_idxs.update(range(0, min(18, len(lines))))
+
+        selected = [lines[i] for i in sorted(hit_idxs)]
+        # Cap per page to avoid one noisy page dominating.
+        if len(selected) > 90:
+            selected = selected[:90]
+
+        if selected:
+            remaining = max_total_lines - kept_total
+            if remaining <= 0:
+                break
+            selected = selected[:remaining]
+            kept_total += len(selected)
+            parts.append(f"--- PAGE {idx} ---\n" + "\n".join(selected))
+
+    # If we ended up with almost nothing (e.g., very short 1-page report), fall back to full text.
+    if kept_total < 30:
+        return "\n\n".join([f"--- PAGE {idx} ---\n{text}" for idx, text in pages])
+
     return "\n\n".join(parts)
 
 
@@ -144,6 +198,7 @@ def extract_with_openai_two_pass(pages: list[tuple[int, str]]) -> ExtractedLabRe
         if v in (None, "", []):
             missing_core.append(k)
 
+    # Skip the second pass unless we are truly missing key demographics OR got no biomarkers.
     if not missing_core and first.biomarkers:
         return first
 

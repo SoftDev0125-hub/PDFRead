@@ -285,96 +285,7 @@ export function DashboardPage() {
 
           {lastResult && (
             <div className="mt-4">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Patient & report
-                  </div>
-                  <div>
-                    <FieldRow label="Patient name" value={lastResult.extracted.patient_name} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="patient_name" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Age (years)" value={lastResult.extracted.age_years} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="age_years" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Sex" value={lastResult.extracted.sex} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="sex" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Report date" value={lastResult.extracted.report_date} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="report_date" />
-                    )}
-                  </div>
-                  <div>
-                    <FieldRow label="Source" value={lastResult.extracted.source} />
-                    {showEvidence && lastResult.extractedV2 && (
-                      <EvidenceBlock v2={lastResult.extractedV2} field="source" />
-                    )}
-                  </div>
-
-                  <div className="mt-4 border-t border-slate-200 pt-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Biomarkers ({lastResult.extracted.biomarkers?.length ?? 0})
-                      </div>
-                      <div className="text-[11px] text-slate-500">standardized name + unit</div>
-                    </div>
-
-                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200">
-                      <div className="grid grid-cols-12 bg-slate-50/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        <div className="col-span-4">Biomarker</div>
-                        <div className="col-span-2 text-right">Value</div>
-                        <div className="col-span-2">Unit</div>
-                        <div className="col-span-3">Range</div>
-                        <div className="col-span-1 text-right">Status</div>
-                      </div>
-                      <div className="divide-y divide-slate-200">
-                        {(lastResult.extracted.biomarkers ?? []).length === 0 ? (
-                          <div className="px-4 py-6 text-sm text-slate-600">
-                            No biomarkers extracted yet (check warnings or enable the OpenAI key for robust extraction).
-                          </div>
-                        ) : (
-                          (lastResult.extracted.biomarkers ?? []).map((b, idx) => {
-                            const pill = statusPill(b.status)
-                            const label = b.name ?? b.original_name ?? '—'
-                            return (
-                              <div key={`${label}-${idx}`} className="grid grid-cols-12 items-center px-3 py-2 text-sm">
-                                <div className="col-span-4 min-w-0">
-                                  <div className="truncate font-medium text-slate-900">{label}</div>
-                                  {b.original_name && b.name && b.original_name !== b.name ? (
-                                    <div className="truncate text-xs text-slate-500">{b.original_name}</div>
-                                  ) : null}
-                                </div>
-                                <div className="col-span-2 text-right font-medium text-slate-900">
-                                  {b.value ?? '—'}
-                                </div>
-                                <div className="col-span-2 text-slate-700">{b.unit ?? '—'}</div>
-                                <div className="col-span-3 text-xs text-slate-700">
-                                  {b.reference_range_text ?? '—'}
-                                </div>
-                                <div className="col-span-1 flex justify-end">
-                                  <span className={['inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold', pill.className].join(' ')}>
-                                    {pill.text}
-                                  </span>
-                                </div>
-                              </div>
-                            )
-                          })
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Page analysis
@@ -443,6 +354,106 @@ export function DashboardPage() {
                       </div>
                     </details>
                   )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Patient & extracted data
+                  </div>
+                  <div>
+                    <FieldRow label="Patient name" value={lastResult.extracted.patient_name} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="patient_name" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Age (years)" value={lastResult.extracted.age_years} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="age_years" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Sex" value={lastResult.extracted.sex} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="sex" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Report date" value={lastResult.extracted.report_date} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="report_date" />
+                    )}
+                  </div>
+                  <div>
+                    <FieldRow label="Source" value={lastResult.extracted.source} />
+                    {showEvidence && lastResult.extractedV2 && (
+                      <EvidenceBlock v2={lastResult.extractedV2} field="source" />
+                    )}
+                  </div>
+
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Biomarkers ({lastResult.extracted.biomarkers?.length ?? 0})
+                      </div>
+                      <div className="text-[11px] text-slate-500">standardized name + unit</div>
+                    </div>
+
+                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200">
+                      {(lastResult.extracted.biomarkers ?? []).length === 0 ? (
+                        <div className="px-4 py-6 text-sm text-slate-600">
+                          No biomarkers extracted yet (check warnings or enable the OpenAI key for robust extraction).
+                        </div>
+                      ) : (
+                        <table className="w-full border-collapse">
+                          <thead className="bg-slate-50/70">
+                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                              <th className="px-3 py-2">Biomarker</th>
+                              <th className="px-3 py-2 text-right">Value</th>
+                              <th className="px-3 py-2">Unit</th>
+                              <th className="px-3 py-2">Range</th>
+                              <th className="px-3 py-2 text-right">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {(lastResult.extracted.biomarkers ?? []).map((b, idx) => {
+                              const pill = statusPill(b.status)
+                              const label = b.name ?? b.original_name ?? '—'
+                              return (
+                                <tr key={`${label}-${idx}`} className="text-sm">
+                                  <td className="px-3 py-2 align-top">
+                                    <div className="min-w-0">
+                                      <div className="truncate font-medium text-slate-900">{label}</div>
+                                      {b.original_name && b.name && b.original_name !== b.name ? (
+                                        <div className="truncate text-xs text-slate-500">{b.original_name}</div>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-right align-top font-medium text-slate-900">
+                                    {b.value ?? '—'}
+                                  </td>
+                                  <td className="px-3 py-2 align-top text-slate-700">{b.unit ?? '—'}</td>
+                                  <td className="px-3 py-2 align-top text-xs text-slate-700">
+                                    {b.reference_range_text ?? '—'}
+                                  </td>
+                                  <td className="px-3 py-2 align-top text-right">
+                                    <span
+                                      className={[
+                                        'inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                        pill.className,
+                                      ].join(' ')}
+                                    >
+                                      {pill.text}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
